@@ -203,8 +203,25 @@
   .order-items { font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.7; }
   .order-bottom { display: flex; justify-content: space-between; align-items: center; }
   .amount-badge { background: var(--orange); color: #fff; font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 10px; }
-  .update-btn { background: var(--navy); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; cursor: pointer; transition: all .2s; }
-  .update-btn:hover { background: var(--navy-dark); }
+  .status-dropdown {
+    appearance: none; -webkit-appearance: none;
+    padding: 8px 32px 8px 12px; border-radius: var(--radius-sm);
+    border: 2px solid var(--navy); background: var(--navy);
+    color: #fff; font-size: 12px; font-weight: 700; font-family: inherit;
+    letter-spacing: .5px; text-transform: uppercase; cursor: pointer;
+    outline: none; transition: all .2s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .status-dropdown:hover { background-color: var(--navy-dark); border-color: var(--navy-dark); }
+  .status-dropdown:focus { box-shadow: 0 0 0 3px rgba(27,58,92,0.2); }
+  .status-dropdown option { background: #fff; color: var(--text); font-weight: 600; text-transform: none; }
+  .remove-order-btn {
+    background: #fee2e2; color: #dc2626; border: none; border-radius: 20px;
+    padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 4px;
+  }
+  .remove-order-btn:hover { background: #fca5a5; color: #991b1b; }
 
   /* PROFILE */
   .profile-header { text-align: center; margin-bottom: 32px; }
@@ -655,7 +672,9 @@ function todayStr() { return new Date().toISOString().slice(0,10); }
 function fmtRp(n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); }
 function setLoading(id, on) {
   const el = document.getElementById(id);
-  if (el) el.style.opacity = on ? '0.4' : '1';
+  if (!el) return;
+  if (id === 'orders-list') return; // jangan pudarkan order cards
+  el.style.opacity = on ? '0.4' : '1';
 }
 
 let currentUser = null;
@@ -841,11 +860,18 @@ async function renderOrders(filter='') {
       return `<div class="order-card">
         <div class="order-top">
           <span class="order-id">ID: ${o.id} | ${o.customer}</span>
-          <span class="status-badge status-${sc}">${o.status}</span>
+          <button class="remove-order-btn" onclick="removeOrder(${o.id})">
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            Remove Order
+          </button>
         </div>
         <div class="order-items"><strong>Orders List:</strong><br>${o.items.replace(/\n/g,'<br>')}</div>
         <div class="order-bottom">
-          <button class="update-btn" onclick="openStatusModal(${o.id},'${o.status}')">Update Status</button>
+          <select class="status-dropdown" onchange="quickUpdateStatus(${o.id}, this.value, this)">
+            <option value="Diproses"${o.status==='Diproses'?' selected':''}>⏳ Diproses</option>
+            <option value="Siap"${o.status==='Siap'?' selected':''}>✅ Siap</option>
+            <option value="Selesai"${o.status==='Selesai'?' selected':''}>🏁 Selesai</option>
+          </select>
           <span class="amount-badge">Amount Paid:<br>${fmtRp(o.amount)}</span>
         </div>
       </div>`;
@@ -961,24 +987,31 @@ async function saveOrder() {
   }
 }
 
-function openStatusModal(orderId, currentStatus) {
-  document.getElementById('status-order-id').value = orderId;
-  document.getElementById('new-status').value = currentStatus || 'Diproses';
-  openModal('status-modal');
-}
-
-async function confirmStatusUpdate() {
-  const id = parseInt(document.getElementById('status-order-id').value);
-  const ns = document.getElementById('new-status').value;
+async function quickUpdateStatus(id, newStatus, selectEl) {
   try {
-    await DB.updateOrder(id, { status: ns });
-    closeModal('status-modal');
-    renderOrders(document.getElementById('order-search').value);
-    notify(`Order #${id} updated to "${ns}"`);
+    await DB.updateOrder(id, { status: newStatus });
+    notify(`Order #${id} → "${newStatus}"`);
   } catch(e) {
     notify('Update failed: ' + e.message);
+    // Revert dropdown on failure
+    renderOrders(document.getElementById('order-search').value);
   }
 }
+
+async function removeOrder(id) {
+  if (!confirm(`Hapus Order #${id}? Tindakan ini tidak bisa dibatalkan.`)) return;
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/orders?id=eq.${id}`, { method: 'DELETE', headers: H });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+    renderOrders(document.getElementById('order-search').value);
+    notify(`Order #${id} berhasil dihapus.`);
+  } catch(e) {
+    notify('Hapus gagal: ' + e.message);
+  }
+}
+
+
+
 
 // ========== PROFILE / MENU ==========
 async function renderProfile() {
