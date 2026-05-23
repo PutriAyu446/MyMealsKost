@@ -277,6 +277,35 @@
   .notification { position: fixed; bottom: 24px; right: 24px; background: var(--navy-dark); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); z-index: 9999; transform: translateY(80px); opacity: 0; transition: all .3s; }
   .notification.show { transform: translateY(0); opacity: 1; }
 
+  /* Order item rows */
+  .order-item-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .order-item-row select {
+    flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; outline: none; background: #fff; color: var(--text);
+    transition: border-color .2s;
+  }
+  .order-item-row select:focus { border-color: var(--navy); }
+  .order-item-row .qty-input {
+    width: 68px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; font-family: inherit; outline: none; text-align: center;
+    transition: border-color .2s;
+  }
+  .order-item-row .qty-input:focus { border-color: var(--navy); }
+  .order-item-row .remove-btn {
+    width: 32px; height: 32px; border: none; border-radius: 6px; background: #fee2e2;
+    color: #dc2626; font-size: 16px; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: background .15s;
+  }
+  .order-item-row .remove-btn:hover { background: #fca5a5; }
+  .add-item-btn {
+    width: 100%; padding: 9px; border: 2px dashed var(--orange); border-radius: var(--radius-sm);
+    background: transparent; color: var(--orange); font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .add-item-btn:hover { background: var(--orange-light); }
+  .amount-calc { background: var(--orange-light); border-radius: var(--radius-sm); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .amount-calc .calc-label { font-size: 12px; font-weight: 600; color: var(--orange-dark); text-transform: uppercase; letter-spacing: .5px; }
+  .amount-calc .calc-value { font-size: 18px; font-weight: 700; color: var(--orange-dark); }
   canvas { max-width: 100%; }
 </style>
 </head>
@@ -447,7 +476,7 @@
 
 <!-- ADD ORDER MODAL -->
 <div class="modal-bg" id="add-order-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:520px;">
     <h3 id="order-modal-title">Add New Order</h3>
     <input type="hidden" id="edit-order-id" value="" />
     <div class="form-row">
@@ -465,12 +494,17 @@
       </div>
     </div>
     <div class="form-group">
-      <label>Order Items (one per line, e.g. 2x Ayam Bumbu Kuning)</label>
-      <textarea id="order-items" rows="3" placeholder="2x Ayam Bumbu Kuning&#10;1x Cumi Saos Padang"></textarea>
+      <label>Order Items</label>
+      <div id="order-item-rows"></div>
+      <button class="add-item-btn" onclick="addItemRow()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+        Add Menu Item
+      </button>
     </div>
     <div class="form-group">
       <label>Amount Paid (Rp)</label>
-      <input type="number" id="order-amount" placeholder="75000" />
+      <input type="number" id="order-amount" placeholder="Auto-calculated" oninput="onAmountInput()" style="width:100%;" />
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;">Calculated total: <strong id="order-amount-display">Rp 0</strong> — leave blank to use this value</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('add-order-modal')">Cancel</button>
@@ -825,22 +859,93 @@ function filterOrders() {
   renderOrders(document.getElementById('order-search').value);
 }
 
-function openAddOrder() {
+// Cached menus for the order modal
+let _modalMenus = [];
+
+async function openAddOrder() {
   document.getElementById('order-modal-title').textContent = 'Add New Order';
   document.getElementById('edit-order-id').value = '';
   document.getElementById('order-customer').value = '';
-  document.getElementById('order-items').value = '';
-  document.getElementById('order-amount').value = '';
   document.getElementById('order-status').value = 'Diproses';
+  const amountInput = document.getElementById('order-amount');
+  amountInput.value = '';
+  amountInput.dataset.userEdited = '';
+  amountInput.dataset.calc = '0';
+  document.getElementById('order-amount-display').textContent = 'Rp 0';
+  try { _modalMenus = await DB.getMenus(); } catch(e) { _modalMenus = []; }
+  document.getElementById('order-item-rows').innerHTML = '';
+  addItemRow();
   openModal('add-order-modal');
+}
+
+function addItemRow(selectedName='', qty=1) {
+  const container = document.getElementById('order-item-rows');
+  const row = document.createElement('div');
+  row.className = 'order-item-row';
+  const options = _modalMenus.map(m =>
+    `<option value="${m.name}" data-price="${m.price}" ${m.name===selectedName?'selected':''}>${m.emoji||'🍱'} ${m.name} — ${fmtRp(m.price)}</option>`
+  ).join('');
+  row.innerHTML = `
+    <select onchange="recalcTotal()">${options}</select>
+    <input type="number" class="qty-input" value="${qty}" min="1" max="99" oninput="recalcTotal()" />
+    <button class="remove-btn" onclick="removeItemRow(this)" title="Remove">×</button>
+  `;
+  container.appendChild(row);
+  recalcTotal();
+}
+
+function removeItemRow(btn) {
+  const row = btn.closest('.order-item-row');
+  const container = document.getElementById('order-item-rows');
+  // Keep at least one row
+  if (container.children.length > 1) {
+    row.remove();
+    recalcTotal();
+  }
+}
+
+function recalcTotal() {
+  const rows = document.querySelectorAll('#order-item-rows .order-item-row');
+  let total = 0;
+  rows.forEach(row => {
+    const sel = row.querySelector('select');
+    const qty = parseInt(row.querySelector('.qty-input').value) || 0;
+    const price = parseInt(sel.selectedOptions[0]?.dataset.price || 0);
+    total += price * qty;
+  });
+  // Store calculated total for fallback
+  document.getElementById('order-amount').dataset.calc = total;
+  document.getElementById('order-amount-display').textContent = fmtRp(total);
+  // Only auto-fill if user hasn't typed anything
+  const input = document.getElementById('order-amount');
+  if (!input.dataset.userEdited) input.placeholder = fmtRp(total).replace('Rp ', '');
+}
+
+function onAmountInput() {
+  const input = document.getElementById('order-amount');
+  // Mark as user-edited if they typed something, clear flag if they erased it
+  input.dataset.userEdited = input.value !== '' ? 'yes' : '';
+}
+
+function getItemRowsAsText() {
+  const rows = document.querySelectorAll('#order-item-rows .order-item-row');
+  return Array.from(rows).map(row => {
+    const name = row.querySelector('select').value;
+    const qty = parseInt(row.querySelector('.qty-input').value) || 1;
+    return `${qty}x ${name}`;
+  }).filter(Boolean).join('\n');
 }
 
 async function saveOrder() {
   const customer = document.getElementById('order-customer').value.trim();
-  const items = document.getElementById('order-items').value.trim();
-  const amount = parseInt(document.getElementById('order-amount').value) || 0;
   const status = document.getElementById('order-status').value;
-  if (!customer || !items) { notify('Please fill in all required fields.'); return; }
+  const items = getItemRowsAsText();
+  const amountInput = document.getElementById('order-amount');
+  const amount = amountInput.value !== ''
+    ? parseInt(amountInput.value)
+    : parseInt(amountInput.dataset.calc || 0);
+  if (!customer) { notify('Please enter a customer name.'); return; }
+  if (!items) { notify('Please add at least one menu item.'); return; }
   const editId = document.getElementById('edit-order-id').value;
   try {
     if (editId) {
