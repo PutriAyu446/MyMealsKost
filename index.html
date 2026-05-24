@@ -7,6 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
+  @font-face {
+  font-family: 'Playlist Script';
+  src: url('Playlist Script.otf');
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --navy: #1B3A5C;
@@ -47,13 +51,13 @@
   /* Logo area */
   .sidebar-logo {
     padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.08);
-    display: flex; align-items: center; gap: 10px; min-height: 72px;
+    display: flex; align-items: center; gap: 30px; min-height: 72px;
     white-space: nowrap; overflow: hidden;
   }
   .sidebar-logo .logo-text { transition: opacity .2s, width .2s; }
   .sidebar.collapsed .sidebar-logo .logo-text { opacity: 0; width: 0; overflow: hidden; }
-  .sidebar-logo .script { font-family: 'Dancing Script', cursive; font-size: 22px; color: #fff; display: block; line-height: 1.1; }
-  .sidebar-logo .sub { font-size: 10px; letter-spacing: 3px; color: var(--orange); font-weight: 600; text-transform: uppercase; }
+  .sidebar-logo .script { font-family: 'Playlist Script', cursive; font-size: 22px; color: #fff; display: block; line-height: 1.1; }
+  .sidebar-logo .sub { font-size: 10px; letter-spacing: 5px; color: var(--orange); font-weight: 600; text-transform: uppercase; }
 
   /* Toggle button inside sidebar top */
   .sidebar-toggle {
@@ -125,9 +129,7 @@
     width: 100%; max-width: 400px; padding: 48px 40px;
     text-align: center;
   }
-  .login-logo { margin-bottom: 8px; }
-  .login-logo .script { font-family: 'Dancing Script', cursive; font-size: 38px; color: var(--navy-dark); }
-  .login-logo .sub { font-size: 12px; letter-spacing: 3px; color: var(--orange); font-weight: 600; text-transform: uppercase; }
+  .login-logo { margin-bottom: -30px; }
   .login-title { font-size: 18px; font-weight: 700; color: var(--navy-dark); margin: 32px 0 24px; letter-spacing: .5px; text-transform: uppercase; }
   .login-field {
     position: relative; margin-bottom: 14px;
@@ -167,7 +169,7 @@
 
   .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
   .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 22px 24px; }
-  .card-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--navy-dark); margin-bottom: 16px; }
+  .card-title {font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--navy-dark); margin-bottom: 16px; }
   .menu-select { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .select-pill {
     padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
@@ -324,6 +326,91 @@
   .amount-calc .calc-label { font-size: 12px; font-weight: 600; color: var(--orange-dark); text-transform: uppercase; letter-spacing: .5px; }
   .amount-calc .calc-value { font-size: 18px; font-weight: 700; color: var(--orange-dark); }
   canvas { max-width: 100%; }
+
+  /* === FULLSCREEN CHART OVERLAY (mobile) === */
+  .chart-fs-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: #122844;
+    flex-direction: column;
+    padding: env(safe-area-inset-top, 16px) 16px 16px;
+    box-sizing: border-box;
+  }
+  .chart-fs-overlay.open { display: flex; }
+
+  .chart-fs-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 12px;
+  }
+
+  .chart-fs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding-top: 8px;
+  }
+  .chart-fs-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .chart-fs-close {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .chart-fs-close:hover { background: rgba(255,255,255,0.22); }
+
+  .chart-fs-canvas-wrap {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+  .chart-fs-canvas-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Tap hint on mobile */
+  @media (max-width: 900px) {
+    .chart-tap-hint {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: var(--muted);
+      margin-top: 8px; user-select: none; pointer-events: none;
+    }
+    .card.chart-tappable { cursor: pointer; position: relative; }
+    .card.chart-tappable::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: var(--radius);
+      transition: background .15s;
+      pointer-events: none;
+    }
+    .card.chart-tappable:active::after {
+      background: rgba(27,58,92,0.06);
+    }
+  }
+  @media (min-width: 901px) {
+    .chart-tap-hint { display: none !important; }
+    .card.chart-tappable { cursor: default; }
+  }
 </style>
 </head>
 <body>
@@ -332,8 +419,7 @@
 <div id="login-screen" class="active">
   <div class="login-box">
     <div class="login-logo">
-      <span class="script">MyMealsKost</span><br>
-      <span class="sub">Meal Prep</span>
+      <img src="logo.png" alt="Logo MyMealsKost" width="300" height="300">
     </div>
     <div class="login-title">Team Account Login</div>
     <div class="login-error" id="login-error">Username or password is incorrect.</div>
@@ -359,7 +445,7 @@
       </button>
       <div class="logo-text">
         <span class="script">MyMealsKost</span>
-        <span class="sub">Meal Prep</span>
+        <span class="sub">MANAGEMENT</span>
       </div>
     </div>
     <nav class="sidebar-nav">
@@ -429,25 +515,29 @@
       </div>
 
       <div class="chart-row">
-        <div class="card">
+        <div class="card chart-tappable" onclick="openChartFullscreen()">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
             <div class="card-title" style="margin-bottom:0;">Order Prediction</div>
             <div class="chart-controls">
-              <select class="chart-dropdown" id="chart-menu-select" onchange="onChartFilterChange()">
+              <select class="chart-dropdown" id="chart-menu-select" onchange="onChartFilterChange()" onclick="event.stopPropagation()">
                 <option value="">Loading...</option>
               </select>
-              <select class="chart-dropdown" id="chart-days-select" onchange="onChartFilterChange()">
-                <option value="1">Last 1 day</option>
-                <option value="2">Last 2 days</option>
-                <option value="3">Last 3 days</option>
-                <option value="4">Last 4 days</option>
-                <option value="5">Last 5 days</option>
-                <option value="6">Last 6 days</option>
-                <option value="7" selected>Last 7 days</option>
+              <select class="chart-dropdown" id="chart-days-select" onchange="onChartFilterChange()" onclick="event.stopPropagation()">
+                <option value="1">Tomorrow</option>
+                <option value="2">Next 2 days</option>
+                <option value="3">Next 3 days</option>
+                <option value="4">Next 4 days</option>
+                <option value="5">Next 5 days</option>
+                <option value="6">Next 6 days</option>
+                <option value="7" selected>Next 7 days</option>
               </select>
             </div>
           </div>
           <canvas id="orderChart" height="180"></canvas>
+          <div class="chart-tap-hint">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            Tap to view fullscreen
+          </div>
         </div>
         <div class="card">
           <div class="card-title">Daily Sales Summary</div>
@@ -574,6 +664,19 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('status-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="confirmStatusUpdate()">Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN CHART OVERLAY (mobile) -->
+<div class="chart-fs-overlay" id="chart-fs-overlay">
+  <div class="chart-fs-inner">
+    <div class="chart-fs-header">
+      <div class="chart-fs-title">Order Prediction</div>
+      <button class="chart-fs-close" onclick="closeChartFullscreen()">&#10005;</button>
+    </div>
+    <div class="chart-fs-canvas-wrap">
+      <canvas id="orderChart-fs"></canvas>
     </div>
   </div>
 </div>
@@ -843,7 +946,88 @@ function renderChart(menuName, days, orders) {
   });
 }
 
-// ========== ORDERS ==========
+// ========== FULLSCREEN CHART (mobile) ==========
+let _fsChartInstance = null;
+
+function openChartFullscreen() {
+  if (window.innerWidth > 900) return;
+
+  const overlay = document.getElementById('chart-fs-overlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Render chart into the fullscreen canvas using same current filter values
+  const menuName = document.getElementById('chart-menu-select').value;
+  const days = parseInt(document.getElementById('chart-days-select').value) || 7;
+  const orders = _ordersCache || [];
+
+  if (_fsChartInstance) { _fsChartInstance.destroy(); _fsChartInstance = null; }
+
+  const labels = [];
+  const vals = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    labels.push(label);
+    const dayOrders = orders.filter(o => o.date === ds);
+    let cnt = 0;
+    dayOrders.forEach(o => {
+      o.items.split('\n').forEach(line => {
+        const m = line.match(/(\d+)x (.+)/);
+        if (m && m[2].trim() === menuName) cnt += parseInt(m[1]);
+      });
+    });
+    vals.push(cnt);
+  }
+
+  const ctx = document.getElementById('orderChart-fs').getContext('2d');
+  _fsChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: menuName,
+        data: vals,
+        borderColor: '#F07D28',
+        backgroundColor: 'rgba(240,125,40,0.15)',
+        borderWidth: 3,
+        pointBackgroundColor: '#F07D28',
+        pointRadius: 5,
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: '#fff', font: { size: 13 } } }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          ticks: { color: 'rgba(255,255,255,0.75)', font: { size: 12 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.08)' },
+          ticks: { color: 'rgba(255,255,255,0.75)', font: { size: 12 }, precision: 0 }
+        }
+      }
+    }
+  });
+}
+
+function closeChartFullscreen() {
+  document.getElementById('chart-fs-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (_fsChartInstance) { _fsChartInstance.destroy(); _fsChartInstance = null; }
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeChartFullscreen(); });
+
 async function renderOrders(filter='') {
   setLoading('orders-list', true);
   const el = document.getElementById('orders-list');
